@@ -34,7 +34,8 @@
     self.objcInjector = [[MoneyStoriesObjcInjector alloc] init];
     self.viewModelObjcInjector = [[StoryBarViewModelObjcInjector alloc] init];
     [self.viewModelObjcInjector.injectedStoryBarViewModel setUpdateCompletion:^{
-        [self getStoryLines];
+        [self updateWith:self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines];
+        [self.webView layoutSubviews];
     }];
 
     ConfigBuilder *builder = [[[[[ConfigBuilder alloc] init] withDebugEnabled] withBaseUrl:[NSURL URLWithString:self.baseURL]] withLanguageCode:self.languageCode];
