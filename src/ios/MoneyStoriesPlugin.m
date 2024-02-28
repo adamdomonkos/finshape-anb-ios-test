@@ -34,7 +34,7 @@
     self.objcInjector = [[MoneyStoriesObjcInjector alloc] init];
     self.viewModelObjcInjector = [[StoryBarViewModelObjcInjector alloc] init];
     [self.viewModelObjcInjector.injectedStoryBarViewModel setUpdateCompletion:^{
-        //[self updateWith:self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines];
+        [self updateWith:self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines];
     }];
 
     ConfigBuilder *builder = [[[[[ConfigBuilder alloc] init] withDebugEnabled] withBaseUrl:[NSURL URLWithString:self.baseURL]] withLanguageCode:self.languageCode];
@@ -154,7 +154,7 @@
 - (void)getStoryLines {
     [self.viewModelObjcInjector.injectedStoryBarViewModel getStoryLinesWithCompletion:^(NSArray<MoneyStoriesStoryLine *> * _Nullable storyLines, NSError * _Nullable error) {
         if (storyLines && error == nil) {
-            //[self updateWith:storyLines];
+            [self updateWith:storyLines];
         } else {
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Error to retrieve the stories"];
             [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
@@ -170,7 +170,7 @@
     for (MoneyStoriesStoryLine *storyLine in storyLines) {
         [storiesArray addObject:@{
             @"startDate": [dateFormatter stringFromDate:storyLine.getStartDate],
-            @"read": [NSNumber numberWithBool:storyLine.isRead],
+            @"read": @(storyLine.isRead),
             @"period": storyLine.getPeriodString
         }];
     }
@@ -182,38 +182,9 @@
     }
 
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    jsonString = [jsonString stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+    jsonString = [jsonString stringByReplacingOccurrencesOfString:@" " withString:@""];
     CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
-
-    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
-}
-
-- (void)storiesDidLoadWithStories:(NSArray<MoneyStoriesStoryLine *> * _Nonnull)stories {
-    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-    dateFormatter.dateFormat = @"yyyy-MM-dd";
-
-    NSMutableArray *storiesArr = @[].mutableCopy;
-    for (MoneyStoriesStoryLine *storyline in stories) {
-        [storiesArr addObject:@{
-            @"startDate": [dateFormatter stringFromDate:storyline.getStartDate],
-            @"read": [NSNumber numberWithBool:storyline.isRead],
-            @"period": storyline.getPeriodString
-        }];
-    }
-
-    NSError *error;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:storiesArr options:NSJSONWritingPrettyPrinted error:&error];
-    if (error != nil) {
-        NSLog(@"NSJSONSerialization error: %@", [error localizedDescription]);
-    }
-
-    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-
-    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
-    NSString *commandDelegateClassName = NSStringFromClass([self.commandDelegate class]);
-
-    NSLog(@"sending data about storyBar className: %@", commandDelegateClassName);
-    NSLog(@"callbackId: %@", self.callbackId);
-    NSLog(@"sending data raw %@", storiesArr);
 
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
