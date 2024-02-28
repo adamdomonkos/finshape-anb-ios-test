@@ -55,31 +55,34 @@
 - (void)openStories:(CDVInvokedUrlCommand *)command {
     NSDictionary *params = (NSDictionary *) command.arguments.firstObject;
 
+    if (![params[@"period"] isKindOfClass:[NSString class]] || ![params[@"date"] isKindOfClass:[NSString class]]) {
+        [self sendPluginResult:command status:CDVCommandStatus_ERROR message:@"Error: Missing input parameters"];
+        return;
+    }
+
     NSString *period;
     if ([params[@"period"] isKindOfClass:[NSString class]]) {
         period = params[@"period"];
-    } else {
-        [self sendPluginResult:command status:CDVCommandStatus_ERROR message:@"Error: Missing input parameters"];
-        return;
     }
 
     NSString *date;
     if ([params[@"date"] isKindOfClass:[NSString class]]) {
         date = params[@"date"];
-    } else {
-        [self sendPluginResult:command status:CDVCommandStatus_ERROR message:@"Error: Missing input parameters"];
-        return;
     }
 
-    BOOL isRead = NO;
-    if (params[@"read"] != nil) {
-        isRead = [params[@"read"] boolValue];
+    if ([period isEqualToString:@"MORE"]) {
+        [self.viewModelObjcInjector.injectedStoryBarViewModel openMore];
     } else {
-        [self sendPluginResult:command status:CDVCommandStatus_ERROR message:@"Error: Missing input parameters"];
-        return;
-    }
+        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+        dateFormatter.dateFormat = @"yyyy-MM-dd";
 
-    [self.objcInjector.injectedMoneyStories handleNotificationWithDate:date period:period isRead:isRead];
+        for (MoneyStoriesStoryLine *storyLine in self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines) {
+            if ([date isEqualToString:[dateFormatter stringFromDate:storyLine.getStartDate]] && [period isEqualToString:storyLine.getPeriodString]) {
+                [self.viewModelObjcInjector.injectedStoryBarViewModel openStoryLine:[self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines indexOfObject:storyLine]];
+                break;
+            }
+        }
+    }
 }
 
 - (void)refreshToken:(CDVInvokedUrlCommand *)command {
