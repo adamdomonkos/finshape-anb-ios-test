@@ -34,8 +34,7 @@
     self.objcInjector = [[MoneyStoriesObjcInjector alloc] init];
     self.viewModelObjcInjector = [[StoryBarViewModelObjcInjector alloc] init];
     [self.viewModelObjcInjector.injectedStoryBarViewModel setUpdateCompletion:^{
-        [self updateWith:self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines];
-        [self.webView layoutSubviews];
+        //[self updateWith:self.viewModelObjcInjector.injectedStoryBarViewModel.storyLines];
     }];
 
     ConfigBuilder *builder = [[[[[ConfigBuilder alloc] init] withDebugEnabled] withBaseUrl:[NSURL URLWithString:self.baseURL]] withLanguageCode:self.languageCode];
@@ -73,7 +72,12 @@
     }
 
     BOOL isRead = NO;
-    isRead = [params[@"read"] boolValue];
+    if (params[@"read"] != nil) {
+        isRead = [params[@"read"] boolValue];
+    } else {
+        [self sendPluginResult:command status:CDVCommandStatus_ERROR message:@"Error: Missing input parameters"];
+        return;
+    }
 
     [self.objcInjector.injectedMoneyStories handleNotificationWithDate:date period:period isRead:isRead];
 }
@@ -143,9 +147,6 @@
     [self.viewModelObjcInjector.injectedStoryBarViewModel initializeWithCompletion:^(BOOL success, NSError * _Nullable error) {
         if (success && error == nil) {
             [self getStoryLines];
-        } else {
-            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Error during initStoryBarViewModel"];
-            [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
         }
     }];
 }
@@ -153,22 +154,22 @@
 - (void)getStoryLines {
     [self.viewModelObjcInjector.injectedStoryBarViewModel getStoryLinesWithCompletion:^(NSArray<MoneyStoriesStoryLine *> * _Nullable storyLines, NSError * _Nullable error) {
         if (storyLines && error == nil) {
-            [self updateWith:storyLines];
+            //[self updateWith:storyLines];
         } else {
-            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Error during getStoryLines"];
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Error to retrieve the stories"];
             [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
         }
     }];
 }
 
 - (void)updateWith:(NSArray<MoneyStoriesStoryLine *> * _Nonnull)storyLines {
-    NSDateFormatter *dateformatter = [[NSDateFormatter alloc] init];
-    dateformatter.dateFormat = @"yyyy-MM-dd";
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    dateFormatter.dateFormat = @"yyyy-MM-dd";
 
     NSMutableArray *storiesArray = @[].mutableCopy;
     for (MoneyStoriesStoryLine *storyLine in storyLines) {
         [storiesArray addObject:@{
-            @"startDate": [dateformatter stringFromDate:storyLine.getStartDate],
+            @"startDate": [dateFormatter stringFromDate:storyLine.getStartDate],
             @"read": [NSNumber numberWithBool:storyLine.isRead],
             @"period": storyLine.getPeriodString
         }];
@@ -182,6 +183,37 @@
 
     NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
+
+    [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
+}
+
+- (void)storiesDidLoadWithStories:(NSArray<MoneyStoriesStoryLine *> * _Nonnull)stories {
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    dateFormatter.dateFormat = @"yyyy-MM-dd";
+
+    NSMutableArray *storiesArr = @[].mutableCopy;
+    for (MoneyStoriesStoryLine *storyline in stories) {
+        [storiesArr addObject:@{
+            @"startDate": [dateFormatter stringFromDate:storyline.getStartDate],
+            @"read": [NSNumber numberWithBool:storyline.isRead],
+            @"period": storyline.getPeriodString
+        }];
+    }
+
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:storiesArr options:NSJSONWritingPrettyPrinted error:&error];
+    if (error != nil) {
+        NSLog(@"NSJSONSerialization error: %@", [error localizedDescription]);
+    }
+
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+
+    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:jsonString];
+    NSString *commandDelegateClassName = NSStringFromClass([self.commandDelegate class]);
+
+    NSLog(@"sending data about storyBar className: %@", commandDelegateClassName);
+    NSLog(@"callbackId: %@", self.callbackId);
+    NSLog(@"sending data raw %@", storiesArr);
 
     [self.commandDelegate sendPluginResult:result callbackId:self.callbackId];
 }
