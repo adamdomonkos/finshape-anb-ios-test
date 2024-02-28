@@ -6,14 +6,13 @@
 //
 
 #import <Foundation/Foundation.h>
-// #import <Cordova/Cordova-umbrella.h>
 #import <Cordova/CDV.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @import MoneyStories;
 
-@interface MoneyStoriesPlugin : CDVPlugin <StoryBarDelegate>
+@interface MoneyStoriesPlugin : CDVPlugin
 
 - (void)initializeSdk:(CDVInvokedUrlCommand *)command;
 
